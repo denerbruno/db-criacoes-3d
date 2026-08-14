@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DB Criações 3D — Calculadora de Custos de Impressão 3D</title>
+<meta name="description" content="Calculadora profissional de custos e orçamentos para impressão 3D: material, energia, depreciação, margens, impostos e geração de PDF." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231d4ed8'/%3E%3Ctext x='50' y='68' font-size='58' text-anchor='middle' fill='white' font-family='Arial'%3E3D%3C/text%3E%3C/svg%3E" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --primary:#1d4ed8;
+  --primary-dark:#1e3a8a;
+  --primary-light:#3b82f6;
+  --primary-50:#eff6ff;
+  --navy:#0f172a;
+  --bg:#f1f5f9;
+  --surface:#ffffff;
+  --surface-2:#f8fafc;
+  --border:#e2e8f0;
+  --text:#0f172a;
+  --text-muted:#64748b;
+  --text-faint:#94a3b8;
+  --green:#16a34a;
+  --green-bg:#f0fdf4;
+  --red:#dc2626;
+  --red-bg:#fef2f2;
+  --amber:#d97706;
+  --amber-bg:#fffbeb;
+  --radius:12px;
+  --shadow:0 1px 2px rgba(15,23,42,.06), 0 1px 3px rgba(15,23,42,.08);
+  --shadow-md:0 4px 12px rgba(15,23,42,.08);
+  --font:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;
+}
+[data-theme="dark"]{
+  --bg:#0b1220;
+  --surface:#111a2c;
+  --surface-2:#0e1626;
+  --border:#233047;
+  --text:#e6ecf5;
+  --text-muted:#9fb0c8;
+  --text-faint:#6b7f9c;
+  --primary-50:#0f2147;
+  --green-bg:#0d2818;
+  --red-bg:#2a1213;
+  --amber-bg:#2a1f0a;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 1px 3px rgba(0,0,0,.4);
+  --shadow-md:0 4px 16px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:var(--font);
+  background:var(--bg);
+  color:var(--text);
+  -webkit-font-smoothing:antialiased;
+  transition:background .2s ease,color .2s ease;
+}
+a{color:var(--primary-light);}
+button{font-family:inherit;}
+input,select,textarea{font-family:inherit;}
+.wrap{max-width:1360px;margin:0 auto;padding:0 20px;}
+/* Header */
+.topbar{
+  background:linear-gradient(135deg,var(--navy) 0%,var(--primary-dark) 55%,var(--primary) 100%);
+  color:#fff;
+  padding:22px 0 26px;
+}
+.topbar-inner{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;}
+.brand{display:flex;align-items:center;gap:14px;}
+.brand-badge{
+  width:52px;height:52px;border-radius:14px;
+  background:rgba(255,255,255,.14);
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;flex-shrink:0;
+  border:1px solid rgba(255,255,255,.25);
+}
+.brand-text h1{margin:0;font-size:22px;font-weight:700;letter-spacing:.2px;}
+.brand-text p{margin:2px 0 0;font-size:13px;color:rgba(255,255,255,.75);}
+.topbar-actions{display:flex;align-items:center;gap:10px;}
+.icon-btn{
+  width:40px;height:40px;border-radius:10px;border:1px solid rgba(255,255,255,.25);
+  background:rgba(255,255,255,.08);color:#fff;cursor:pointer;font-size:17px;
+  display:flex;align-items:center;justify-content:center;transition:.15s;
+}
+.icon-btn:hover{background:rgba(255,255,255,.2);}
+.budget-tag{
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);
+  padding:8px 14px;border-radius:10px;font-size:13px;color:#fff;
+}
+/* Tabs */
+.tabbar-outer{background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:40;box-shadow:var(--shadow);}
+.tabbar{display:flex;gap:4px;overflow-x:auto;padding:8px 0;scrollbar-width:thin;}
+.tabbtn{
+  border:none;background:transparent;color:var(--text-muted);
+  padding:10px 16px;border-radius:9px;font-size:14px;font-weight:600;
+  cursor:pointer;white-space:nowrap;transition:.15s;
+}
+.tabbtn:hover{background:var(--surface-2);color:var(--text);}
+.tabbtn.active{background:var(--primary);color:#fff;}
+/* Layout */
+.main{padding:24px 0 60px;}
+.tabpanel{display:none;animation:fade .25s ease;}
+.tabpanel.active{display:block;}
+@keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+.grid-2{display:grid;grid-template-columns:1.05fr .95fr;gap:20px;align-items:start;}
+@media(max-width:960px){.grid-2{grid-template-columns:1fr;}}
+.card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px;margin-bottom:18px;box-shadow:var(--shadow);
+}
+.card-head{margin-bottom:16px;}
+.card-head h2{margin:0 0 3px;font-size:16px;display:flex;align-items:center;gap:8px;}
+.card-head p{margin:0;font-size:12.5px;color:var(--text-muted);}
+.field{margin-bottom:14px;}
+.field label{
+  display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;
+  color:var(--text-muted);margin-bottom:6px;
+}
+.info-dot{
+  width:14px;height:14px;border-radius:50%;background:var(--border);color:var(--text-muted);
+  font-size:9px;display:inline-flex;align-items:center;justify-content:center;cursor:help;flex-shrink:0;
+}
+.field input[type=text],.field input[type=number],.field select,.field textarea{
+  width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:8px;
+  background:var(--surface-2);color:var(--text);font-size:13.5px;transition:.15s;
+}
+.field input:focus,.field select:focus,.field textarea:focus{
+  outline:none;border-color:var(--primary-light);box-shadow:0 0 0 3px rgba(59,130,246,.15);
+}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+@media(max-width:560px){.row2,.row3{grid-template-columns:1fr;}}
+.pillgroup{display:flex;gap:8px;flex-wrap:wrap;}
+.pill{
+  border:1px solid var(--border);background:var(--surface-2);color:var(--text-muted);
+  padding:7px 13px;border-radius:20px;font-size:12.5px;cursor:pointer;font-weight:600;transition:.15s;
+}
+.pill.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+.hint{font-size:11.5px;color:var(--text-faint);margin-top:4px;}
+/* Results */
+.result-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;font-size:13.5px;}
+.result-row.total{border-top:1px dashed var(--border);margin-top:6px;padding-top:10px;font-weight:700;font-size:14.5px;}
+.result-row .val{font-weight:700;font-variant-numeric:tabular-nums;}
+.panel-highlight{
+  background:var(--green-bg);border:1px solid rgba(22,163,74,.25);border-radius:10px;padding:14px 16px;
+}
+.panel-highlight .result-row.total{color:var(--green);}
+.panel-internal{background:var(--amber-bg);border:1px solid rgba(217,119,6,.25);border-radius:10px;padding:14px 16px;}
+.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.metric-box{background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:10px 12px;}
+.metric-box .lbl{font-size:11px;color:var(--text-muted);margin-bottom:3px;}
+.metric-box .num{font-size:15px;font-weight:700;}
+/* Buttons */
+.btn{
+  border:none;border-radius:9px;padding:11px 18px;font-size:13.5px;font-weight:700;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:.15s;
+}
+.btn-primary{background:var(--primary);color:#fff;}
+.btn-primary:hover{background:var(--primary-dark);}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text);}
+.btn-outline:hover{background:var(--surface-2);}
+.btn-block{width:100%;}
+.btn-sm{padding:7px 12px;font-size:12.5px;border-radius:7px;}
+.btn-danger{background:var(--red-bg);color:var(--red);border:1px solid rgba(220,38,38,.25);}
+.checkline{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:9px;color:var(--text);}
+.checkline input{width:16px;height:16px;accent-color:var(--primary);}
+/* Presets */
+.preset-search{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.preset-search input{flex:1;min-width:180px;}
+.preset-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px;}
+.preset-card{
+  border:1px solid var(--border);border-radius:10px;padding:14px;background:var(--surface-2);
+  display:flex;flex-direction:column;gap:8px;
+}
+.preset-card .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+.preset-card h4{margin:0;font-size:13.5px;line-height:1.3;}
+.badge{
+  font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:20px;background:var(--primary-50);
+  color:var(--primary);white-space:nowrap;
+}
+.preset-specs{display:flex;gap:14px;font-size:12px;color:var(--text-muted);flex-wrap:wrap;}
+.preset-specs b{color:var(--text);}
+.preset-desc{font-size:12px;color:var(--text-muted);line-height:1.4;flex:1;}
+.subtabs{display:flex;gap:8px;margin-bottom:16px;}
+.subtabs button{
+  border:1px solid var(--border);background:var(--surface);color:var(--text-muted);
+  padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;
+}
+.subtabs button.active{background:var(--navy);color:#fff;border-color:var(--navy);}
+/* Donut */
+.donut-wrap{display:flex;gap:30px;align-items:center;flex-wrap:wrap;justify-content:center;padding:10px 0;}
+.donut{
+  width:210px;height:210px;border-radius:50%;position:relative;flex-shrink:0;
+}
+.donut::after{
+  content:"";position:absolute;inset:26px;border-radius:50%;background:var(--surface);
+  display:flex;align-items:center;justify-content:center;
+}
+.donut-center{
+  position:absolute;inset:26px;border-radius:50%;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;
+}
+.donut-center .t1{font-size:11px;color:var(--text-muted);}
+.donut-center .t2{font-size:17px;font-weight:800;}
+.legend{display:flex;flex-direction:column;gap:10px;min-width:210px;}
+.legend-item{display:flex;align-items:center;gap:9px;font-size:13px;}
+.legend-dot{width:12px;height:12px;border-radius:3px;flex-shrink:0;}
+.legend-item .lname{flex:1;color:var(--text-muted);}
+.legend-item b{font-variant-numeric:tabular-nums;}
+/* Comparison */
+.compare-table{width:100%;border-collapse:collapse;font-size:13px;}
+.compare-table th{
+  text-align:left;font-size:11.5px;color:var(--text-muted);padding:8px 10px;border-bottom:2px solid var(--border);
+  text-transform:uppercase;letter-spacing:.3px;
+}
+.compare-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.compare-table input{width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface-2);color:var(--text);font-size:12.5px;}
+.compare-table td.name-cell{font-weight:700;}
+/* History */
+.hist-card{
+  border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;
+  background:var(--surface-2);display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;
+}
+.hist-info h4{margin:0 0 3px;font-size:14px;}
+.hist-info p{margin:0;font-size:12px;color:var(--text-muted);}
+.hist-actions{display:flex;gap:8px;}
+.empty-state{text-align:center;padding:50px 20px;color:var(--text-muted);}
+.empty-state .ic{font-size:40px;margin-bottom:10px;}
+/* Settings */
+.logo-upload{display:flex;align-items:center;gap:14px;}
+.logo-preview{
+  width:64px;height:64px;border-radius:10px;border:1px dashed var(--border);
+  display:flex;align-items:center;justify-content:center;background:var(--surface-2);overflow:hidden;flex-shrink:0;
+}
+.logo-preview img{width:100%;height:100%;object-fit:cover;}
+.theme-toggle{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;}
+.switch{position:relative;width:44px;height:24px;flex-shrink:0;}
+.switch input{opacity:0;width:0;height:0;}
+.slider{position:absolute;inset:0;background:var(--border);border-radius:24px;cursor:pointer;transition:.2s;}
+.slider::before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;}
+.switch input:checked + .slider{background:var(--primary);}
+.switch input:checked + .slider::before{transform:translateX(20px);}
+/* Footer */
+.footer{border-top:1px solid var(--border);margin-top:20px;padding:36px 0 26px;background:var(--surface);}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr;gap:30px;}
+@media(max-width:700px){.footer-grid{grid-template-columns:1fr;}}
+.footer h3{margin:0 0 8px;font-size:16px;}
+.footer p{color:var(--text-muted);font-size:13px;line-height:1.6;margin:0;}
+.footer-bottom{text-align:center;font-size:12px;color:var(--text-faint);margin-top:26px;padding-top:18px;border-top:1px solid var(--border);}
+.toast{
+  position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--navy);color:#fff;padding:12px 20px;border-radius:10px;font-size:13.5px;
+  box-shadow:var(--shadow-md);z-index:999;opacity:0;pointer-events:none;transition:.25s;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.file-btn{
+  display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--surface-2);
+  padding:9px 13px;border-radius:8px;font-size:12.5px;cursor:pointer;color:var(--text);
+}
+.file-btn input{display:none;}
+.photo-preview{margin-top:8px;width:100%;max-width:120px;border-radius:8px;border:1px solid var(--border);}
+.scrollx{overflow-x:auto;}
+::-webkit-scrollbar{height:8px;width:8px;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+</style>
+</head>
+<body>
+<div id="toast" class="toast"></div>
+
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <div class="brand">
+      <div class="brand-badge">🖨️</div>
+      <div class="brand-text">
+        <h1>DB Criações 3D</h1>
+        <p>Calculadora profissional de custos e orçamentos para impressão 3D</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <span class="budget-tag" id="budgetTag">Orçamento Nº 0001</span>
+      <button class="icon-btn" id="themeToggleBtn" title="Alternar tema">🌙</button>
+    </div>
+  </div>
+</header>
+
+<div class="tabbar-outer">
+  <div class="wrap">
+    <div class="tabbar" id="tabbar">
+      <button class="tabbtn active" data-tab="calc">🧮 Calculadora</button>
+      <button class="tabbtn" data-tab="presets">🎛️ Presets</button>
+      <button class="tabbtn" data-tab="analytics">📊 Análises</button>
+      <button class="tabbtn" data-tab="compare">🔄 Comparação</button>
+      <button class="tabbtn" data-tab="history">📚 Histórico</button>
+      <button class="tabbtn" data-tab="settings">⚙️ Configurações</button>
+    </div>
+  </div>
+</div>
+
+<main class="main">
+  <div class="wrap">
+
+    <!-- CALCULADORA -->
+    <section class="tabpanel active" id="tab-calc">
+      <div class="grid-2">
+        <div id="calcFormCol"></div>
+        <div id="calcResultCol"></div>
+      </div>
+    </section>
+
+    <!-- PRESETS -->
+    <section class="tabpanel" id="tab-presets">
+      <div class="card">
+        <div class="card-head">
+          <h2>🎛️ Presets de Filamentos e Impressoras</h2>
+          <p>Biblioteca com filamentos e impressoras prontos — aplique direto na calculadora</p>
+        </div>
+        <div class="subtabs" id="presetSubtabs">
+          <button class="active" data-sub="filament">Filamentos</button>
+          <button data-sub="printer">Impressoras</button>
+        </div>
+        <div id="presetContent"></div>
+      </div>
+    </section>
+
+    <!-- ANALYTICS -->
+    <section class="tabpanel" id="tab-analytics">
+      <div class="card">
+        <div class="card-head">
+          <h2>📊 Análise de Custos</h2>
+          <p>Distribuição dos custos do cálculo atual</p>
+        </div>
+        <div id="analyticsContent"></div>
+      </div>
+    </section>
+
+    <!-- COMPARE -->
+    <section class="tabpanel" id="tab-compare">
+      <div class="card">
+        <div class="card-head">
+          <h2>🔄 Análise Comparativa</h2>
+          <p>Compare diferentes cenários de custo lado a lado</p>
+        </div>
+        <div id="compareContent"></div>
+      </div>
+    </section>
+
+    <!-- HISTORY -->
+    <section class="tabpanel" id="tab-history">
+      <div class="card">
+        <div class="card-head">
+          <h2>📚 Histórico de Cálculos</h2>
+          <p>Últimos 50 cálculos salvos neste navegador</p>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+          <button class="btn btn-outline btn-sm" id="exportHistBtn">⬇️ Exportar JSON</button>
+          <label class="file-btn btn-sm">⬆️ Importar JSON<input type="file" id="importHistInput" accept="application/json"></label>
+          <button class="btn btn-danger btn-sm" id="clearHistBtn">🗑️ Limpar histórico</button>
+        </div>
+        <div id="historyContent"></div>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="tabpanel" id="tab-settings">
+      <div id="settingsContent"></div>
+    </section>
+
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="wrap footer-grid">
+    <div>
+      <h3>🖨️ DB Criações 3D</h3>
+      <p>Sistema profissional de cálculo de custos e geração de orçamentos para impressão 3D. Feito para makers, ateliês e empresas do setor precificarem seus projetos com confiança.</p>
+    </div>
+    <div>
+      <h3>Sobre</h3>
+      <p>Todos os dados ficam salvos apenas no seu navegador (local), com opção de backup em JSON. Nenhuma informação é enviada para servidores externos.</p>
+    </div>
+  </div>
+  <div class="wrap footer-bottom">
+    © <span id="yearNow"></span> DB Criações 3D — Feito com ❤️ para a comunidade maker
+  </div>
+</footer>
+
+<script>
+/* ==========================================================================
+   DB Criações 3D — Calculadora de Custos de Impressão 3D
+   Aplicativo single-file (HTML+CSS+JS), sem dependências de build.
+   ========================================================================== */
+
+/* ---------- Utilidades ---------- */
+const $ = (sel, ctx) => (ctx || document).querySelector(sel);
+const $$ = (sel, ctx) => Array.from((ctx || document).querySelectorAll(sel));
+const el = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstChild; };
+const fmtBRL = (n) => (isFinite(n) ? n : 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const fmtPct = (n) => `${(isFinite(n) ? n : 0).toFixed(1)}%`;
+const clampNum = (v, fallback = 0) => { const n = parseFloat(v); return isFinite(n) ? n : fallback; };
+const uid = () => 'id_' + Math.random().toString(36).slice(2, 10);
+let toastTimer = null;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+const STORAGE = {
+  calc: 'db3d_calc_v1',
+  history: 'db3d_history_v1',
+  company: 'db3d_company_v1',
+  theme: 'db3d_theme_v1',
+  customPresets: 'db3d_custom_presets_v1',
+  scenarios: 'db3d_scenarios_v1',
+  budgetSeq: 'db3d_budget_seq_v1',
+};
+
+function loadJSON(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (e) { return fallback; }
+}
+function saveJSON(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { console.warn('storage full', e); }
+}
+
+/* ---------- Dados de Presets ---------- */
+const FILAMENT_CATEGORIES = ['Básico', 'Flexível', 'Técnico', 'Especial', 'Solúvel', 'Premium'];
+const FILAMENTS = [
+  { id: 'pla', name: 'PLA (Ácido Poliláctico)', category: 'Básico', price: 85, extrusion: 200, bed: 60, desc: 'Fácil de imprimir, biodegradável, ideal para iniciantes' },
+  { id: 'plaplus', name: 'PLA+ (PLA Melhorado)', category: 'Básico', price: 95, extrusion: 210, bed: 60, desc: 'PLA com maior resistência e durabilidade' },
+  { id: 'plasilk', name: 'PLA Silk', category: 'Especial', price: 110, extrusion: 210, bed: 60, desc: 'Acabamento brilhante e sedoso, ótimo visual' },
+  { id: 'plawood', name: 'PLA Madeira (Wood Fill)', category: 'Especial', price: 130, extrusion: 200, bed: 55, desc: 'Aparência e textura de madeira natural' },
+  { id: 'plametal', name: 'PLA Metal Fill', category: 'Especial', price: 190, extrusion: 210, bed: 60, desc: 'Aspecto metálico, peça final mais densa' },
+  { id: 'abs', name: 'ABS (Acrilonitrila Butadieno Estireno)', category: 'Básico', price: 90, extrusion: 250, bed: 100, desc: 'Resistente a impactos e temperaturas, uso industrial' },
+  { id: 'absp', name: 'ABS Premium', category: 'Básico', price: 105, extrusion: 245, bed: 95, desc: 'ABS melhorado com menos empenamento e melhor adesão' },
+  { id: 'asa', name: 'ASA', category: 'Técnico', price: 120, extrusion: 250, bed: 100, desc: 'Resistente a raios UV, ideal para uso externo' },
+  { id: 'petg', name: 'PETG (Tereftalato de Polietileno Glicol)', category: 'Básico', price: 110, extrusion: 235, bed: 80, desc: 'Combina facilidade do PLA com resistência do ABS' },
+  { id: 'petgcf', name: 'PETG Carbono (CF)', category: 'Técnico', price: 160, extrusion: 240, bed: 80, desc: 'Reforçado com fibra de carbono, alta rigidez' },
+  { id: 'tpu95', name: 'TPU 95A', category: 'Flexível', price: 140, extrusion: 220, bed: 50, desc: 'Flexível e resistente a impacto e abrasão' },
+  { id: 'tpu85', name: 'TPU 85A (Flexível Macio)', category: 'Flexível', price: 150, extrusion: 215, bed: 45, desc: 'Ainda mais flexível, para peças macias' },
+  { id: 'nylon', name: 'Nylon (PA)', category: 'Técnico', price: 180, extrusion: 260, bed: 80, desc: 'Alta resistência mecânica e flexibilidade' },
+  { id: 'nyloncf', name: 'Nylon Carbono (PA-CF)', category: 'Técnico', price: 220, extrusion: 265, bed: 90, desc: 'Extremamente rígido, usado em peças técnicas' },
+  { id: 'pc', name: 'PC (Policarbonato)', category: 'Técnico', price: 200, extrusion: 270, bed: 110, desc: 'Altíssima resistência térmica e mecânica' },
+  { id: 'pcabs', name: 'PC-ABS', category: 'Técnico', price: 175, extrusion: 255, bed: 100, desc: 'Combina tenacidade do PC com fluidez do ABS' },
+  { id: 'hips', name: 'HIPS', category: 'Básico', price: 95, extrusion: 230, bed: 100, desc: 'Usado também como suporte solúvel em limoneno' },
+  { id: 'pva', name: 'PVA', category: 'Solúvel', price: 250, extrusion: 200, bed: 60, desc: 'Solúvel em água, ideal para suportes complexos' },
+  { id: 'bvoh', name: 'BVOH', category: 'Solúvel', price: 280, extrusion: 210, bed: 60, desc: 'Solúvel em água fria, mais rápido que o PVA' },
+  { id: 'plafluor', name: 'PLA Fluorescente', category: 'Especial', price: 120, extrusion: 205, bed: 60, desc: 'Brilha no escuro, efeito decorativo' },
+  { id: 'resinstd', name: 'Resina Standard (LCD/DLP)', category: 'Premium', price: 180, extrusion: 0, bed: 0, desc: 'Para impressoras de resina, alta definição de detalhes' },
+  { id: 'resintough', name: 'Resina Tenaz (Tough)', category: 'Premium', price: 320, extrusion: 0, bed: 0, desc: 'Maior resistência a impacto para peças funcionais' },
+];
+
+const PRINTER_CATEGORIES = ['FDM Entrada', 'FDM Intermediária', 'FDM Profissional', 'Resina'];
+const PRINTERS = [
+  { id: 'ender3', name: 'Creality Ender 3', category: 'FDM Entrada', power: 220, depreciation: 0.35, desc: 'Impressora FDM de entrada, ampla base de peças' },
+  { id: 'ender3v2', name: 'Creality Ender 3 V2', category: 'FDM Entrada', power: 270, depreciation: 0.40, desc: 'Evolução da Ender 3 com placa silenciosa' },
+  { id: 'ender3s1', name: 'Creality Ender 3 S1', category: 'FDM Intermediária', power: 350, depreciation: 0.55, desc: 'Extrusora direta e nivelamento automático' },
+  { id: 'k1', name: 'Creality K1', category: 'FDM Profissional', power: 500, depreciation: 0.90, desc: 'CoreXY de alta velocidade com câmera' },
+  { id: 'k1max', name: 'Creality K1 Max', category: 'FDM Profissional', power: 600, depreciation: 1.10, desc: 'Versão de grande volume da K1' },
+  { id: 'prusamk3', name: 'Prusa i3 MK3S+', category: 'FDM Intermediária', power: 240, depreciation: 0.70, desc: 'Referência em confiabilidade e qualidade' },
+  { id: 'prusamini', name: 'Prusa MINI+', category: 'FDM Entrada', power: 120, depreciation: 0.45, desc: 'Compacta, ótima para peças pequenas' },
+  { id: 'bambup1p', name: 'Bambu Lab P1P', category: 'FDM Profissional', power: 350, depreciation: 0.85, desc: 'Alta velocidade com sistema multi-material opcional' },
+  { id: 'bambux1c', name: 'Bambu Lab X1 Carbon', category: 'FDM Profissional', power: 400, depreciation: 1.30, desc: 'Câmara fechada, ideal para materiais técnicos' },
+  { id: 'bambua1mini', name: 'Bambu Lab A1 Mini', category: 'FDM Entrada', power: 200, depreciation: 0.55, desc: 'Compacta e acessível, boa qualidade de saída' },
+  { id: 'kobra2', name: 'Anycubic Kobra 2', category: 'FDM Intermediária', power: 350, depreciation: 0.50, desc: 'Boa relação custo-benefício e velocidade' },
+  { id: 'neptune4', name: 'Elegoo Neptune 4', category: 'FDM Intermediária', power: 350, depreciation: 0.45, desc: 'Extrusora direta com bom desempenho' },
+  { id: 'aquilax2', name: 'Voxelab Aquila X2', category: 'FDM Entrada', power: 250, depreciation: 0.35, desc: 'Entrada acessível com boas avaliações' },
+  { id: 'sidewinderx2', name: 'Artillery Sidewinder X2', category: 'FDM Intermediária', power: 270, depreciation: 0.50, desc: 'Mesa flexível e bom volume de impressão' },
+  { id: 'ultimakers3', name: 'Ultimaker S3', category: 'FDM Profissional', power: 500, depreciation: 2.20, desc: 'Uso profissional/industrial, alta precisão' },
+  { id: 'photonm5s', name: 'Anycubic Photon Mono M5s', category: 'Resina', power: 65, depreciation: 0.60, desc: 'Resina 12K, alta definição de detalhes' },
+  { id: 'saturn3u', name: 'Elegoo Saturn 3 Ultra', category: 'Resina', power: 70, depreciation: 0.65, desc: 'Resina de alta velocidade e resolução' },
+];
+
+function getAllFilaments() {
+  return [...FILAMENTS, ...loadJSON(STORAGE.customPresets, { filaments: [], printers: [] }).filaments];
+}
+function getAllPrinters() {
+  return [...PRINTERS, ...loadJSON(STORAGE.customPresets, { filaments: [], printers: [] }).printers];
+}
+
+/* ---------- Estado ---------- */
+function defaultCompany() {
+  return {
+    name: 'DB Criações 3D',
+    logo: '',
+    phone: '',
+    email: '',
+    cnpj: '',
+    address: '',
+    defaultMargin: 5,
+    defaultMarkup: 30,
+    defaultTaxes: 0,
+    defaultCardFee: 0,
+    defaultEnergyPrice: 0.95,
+  };
+}
+function defaultCalc() {
+  const c = state ? state.company : loadJSON(STORAGE.company, defaultCompany());
+  return {
+    projectName: '',
+    dimensions: '',
+    color: '',
+    photo: '',
+    finish: 'Bruto',
+    nozzle: 0.4,
+    resolution: 0.2,
+    filamentName: 'PLA (Ácido Poliláctico)',
+    filamentPrice: 85,
+    pieceWeight: 20,
+    printerName: 'Creality Ender 3',
+    printerPower: 220,
+    printTime: 2,
+    depreciation: 0.35,
+    energyPrice: c.defaultEnergyPrice,
+    packagingCost: 0,
+    packagingType: 'Caixa de papelão',
+    shippingType: 'percentage',
+    shippingPercent: 15,
+    shippingFixed: 0,
+    shippingMethod: 'Correios',
+    safetyMargin: c.defaultMargin,
+    markup: c.defaultMarkup,
+    taxes: c.defaultTaxes,
+    cardFee: c.defaultCardFee,
+    advertising: 0,
+    pdfOptions: {
+      showPrinter: true,
+      showSpecs: true,
+      showBreakdown: true,
+      showCompany: true,
+      showSignature: false,
+    },
+    budgetNumber: '',
+    budgetMode: 'auto',
+  };
+}
+
+let state = {
+  activeTab: 'calc',
+  activePresetSub: 'filament',
+  company: loadJSON(STORAGE.company, defaultCompany()),
+  calc: loadJSON(STORAGE.calc, null),
+  history: loadJSON(STORAGE.history, []),
+  scenarios: loadJSON(STORAGE.scenarios, []),
+  budgetSeq: loadJSON(STORAGE.budgetSeq, 1),
+};
+if (!state.calc) state.calc = defaultCalc();
+
+function persistCalc() { saveJSON(STORAGE.calc, state.calc); }
+function persistCompany() { saveJSON(STORAGE.company, state.company); }
+function persistHistory() { saveJSON(STORAGE.history, state.history); }
+function persistScenarios() { saveJSON(STORAGE.scenarios, state.scenarios); }
+function persistBudgetSeq() { saveJSON(STORAGE.budgetSeq, state.budgetSeq); }
+
+/* ---------- Motor de Cálculo ---------- */
+function computeCalc(c) {
+  const materialCost = (clampNum(c.pieceWeight) / 1000) * clampNum(c.filamentPrice);
+  const energyCost = (clampNum(c.printerPower) / 1000) * clampNum(c.printTime) * clampNum(c.energyPrice);
+  const depreciationCost = clampNum(c.depreciation) * clampNum(c.printTime);
+  const serviceCost = energyCost + depreciationCost;
+  const packagingCost = clampNum(c.packagingCost);
+
+  const grossTotalCost = materialCost + serviceCost + packagingCost;
+  const safetyFactor = 1 + clampNum(c.safetyMargin) / 100;
+  const costWithFailure = grossTotalCost * safetyFactor;
+  const failureReserve = costWithFailure - grossTotalCost;
+
+  const markupFactor = 1 + clampNum(c.markup) / 100;
+  const salePrice = costWithFailure * markupFactor;
+
+  let shippingCost = 0;
+  if (c.shippingType === 'percentage') shippingCost = salePrice * (clampNum(c.shippingPercent) / 100);
+  else if (c.shippingType === 'fixed') shippingCost = clampNum(c.shippingFixed);
+  else shippingCost = 0; // pickup
+
+  const finalPrice = salePrice + shippingCost;
+  const grossProfit = salePrice - costWithFailure;
+
+  const taxesAmount = salePrice * (clampNum(c.taxes) / 100);
+  const cardFeeAmount = salePrice * (clampNum(c.cardFee) / 100);
+  const advertisingAmount = clampNum(c.advertising);
+  const internalCostsTotal = taxesAmount + cardFeeAmount + advertisingAmount;
+  const netProfit = grossProfit - internalCostsTotal;
+  const netMarginPct = salePrice > 0 ? (netProfit / salePrice) * 100 : 0;
+
+  const weight = clampNum(c.pieceWeight) || 1;
+  const time = clampNum(c.printTime) || 1;
+  const costPerGram = grossTotalCost / weight;
+  const costPerHourBase = grossTotalCost / time;
+  const costPerHourSale = salePrice / time;
+  const profitPerHour = grossProfit / time;
+  const roiPercent = grossTotalCost > 0 ? (grossProfit / grossTotalCost) * 100 : 0;
+
+  return {
+    materialCost, energyCost, depreciationCost, serviceCost, packagingCost,
+    grossTotalCost, costWithFailure, failureReserve,
+    salePrice, shippingCost, finalPrice, grossProfit,
+    taxesAmount, cardFeeAmount, advertisingAmount, internalCostsTotal, netProfit, netMarginPct,
+    costPerGram, costPerHourBase, costPerHourSale, profitPerHour, roiPercent,
+  };
+}
+
+/* ---------- Aba Calculadora ---------- */
+const RESOLUTIONS = [
+  { v: 0.05, l: '0.05 mm (Ultra alta qualidade)' },
+  { v: 0.08, l: '0.08 mm (Muito alta qualidade)' },
+  { v: 0.1, l: '0.1 mm (Alta qualidade)' },
+  { v: 0.15, l: '0.15 mm (Boa qualidade)' },
+  { v: 0.2, l: '0.2 mm (Qualidade padrão)' },
+  { v: 0.25, l: '0.25 mm (Qualidade normal)' },
+  { v: 0.28, l: '0.28 mm (Padrão)' },
+  { v: 0.3, l: '0.3 mm (Rápida)' },
+  { v: 0.35, l: '0.35 mm (Muito rápida)' },
+  { v: 0.4, l: '0.4 mm (Ultra rápida)' },
+];
+const NOZZLES = [0.2, 0.4, 0.6, 0.8];
+const FINISHES = ['Bruto', 'Lixado', 'Pintado', 'Polido'];
+const PACKAGING_TYPES = ['Caixa de papelão', 'Envelope bolha', 'Caixa de madeira', 'Embalagem plástica', 'Caixa personalizada', 'Sem embalagem'];
+const SHIPPING_METHODS = ['Correios', 'Transportadora', 'Loggi', 'Uber Flash', 'Motoboy', 'Próprio', 'Outro'];
+
+function infoDot(text) { return `<span class="info-dot" title="${text}">i</span>`; }
+
+function renderCalcForm() {
+  const c = state.calc;
+  const col = $('#calcFormCol');
+  col.innerHTML = `
+    <div class="card">
+      <div class="card-head"><h2>📝 Detalhes do Projeto</h2><p>Informações completas da impressão para orçamento profissional</p></div>
+      <div class="field">
+        <label>Nome da Impressão ${infoDot('Nome que identifica esta peça/projeto')}</label>
+        <input type="text" data-field="projectName" placeholder="Ex: Miniatura Dragão, Peça Drone, Vaso Decorativo..." value="${escapeHtml(c.projectName)}">
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Dimensões Aproximadas ${infoDot('Comprimento x Largura x Altura')}</label>
+          <input type="text" data-field="dimensions" placeholder="Ex: 80 x 45 x 30 mm" value="${escapeHtml(c.dimensions)}">
+        </div>
+        <div class="field">
+          <label>Cor do Filamento ${infoDot('Cor usada na impressão')}</label>
+          <input type="text" data-field="color" placeholder="Ex: Azul, Vermelho, Transparente..." value="${escapeHtml(c.color)}">
+        </div>
+      </div>
+      <div class="field">
+        <label>Foto da Peça (Opcional)</label>
+        <label class="file-btn">📷 Escolher arquivo<input type="file" id="photoInput" accept="image/*"></label>
+        <div class="hint">💡 Dica: Use imagens quadradas para melhor resultado no PDF</div>
+        ${c.photo ? `<img src="${c.photo}" class="photo-preview">` : ''}
+      </div>
+      <div class="field">
+        <label>Tipo de Acabamento ${infoDot('Acabamento final aplicado à peça')}</label>
+        <div class="pillgroup" data-pillgroup="finish">
+          ${FINISHES.map(f => `<button type="button" class="pill ${c.finish === f ? 'active' : ''}" data-val="${f}">${f}</button>`).join('')}
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Bico (mm) ${infoDot('Diâmetro do bico da extrusora')}</label>
+          <div class="pillgroup" data-pillgroup="nozzle">
+            ${NOZZLES.map(n => `<button type="button" class="pill ${c.nozzle == n ? 'active' : ''}" data-val="${n}">${n} mm</button>`).join('')}
+          </div>
+        </div>
+        <div class="field">
+          <label>Resolução ${infoDot('Altura de camada')}</label>
+          <select data-field="resolution">
+            ${RESOLUTIONS.map(r => `<option value="${r.v}" ${c.resolution == r.v ? 'selected' : ''}>${r.l}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>🧵 Material</h2><p>Configurações do filamento utilizado</p></div>
+      <div class="field">
+        <label>Filamento ${infoDot('Aplique um preset na aba Presets para preencher automaticamente')}</label>
+        <input type="text" data-field="filamentName" value="${escapeHtml(c.filamentName)}">
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Preço de Venda do Material (R$/kg) ${infoDot('Preço pago por quilo do filamento/resina')}</label>
+          <input type="number" step="0.01" min="0" data-field="filamentPrice" value="${c.filamentPrice}">
+        </div>
+        <div class="field">
+          <label>Peso da Peça (g) ${infoDot('Peso total de material usado, incluindo suportes')}</label>
+          <input type="number" step="0.1" min="0" data-field="pieceWeight" value="${c.pieceWeight}">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>🖨️ Impressora</h2><p>Configurações da impressora 3D</p></div>
+      <div class="field">
+        <label>Impressora ${infoDot('Aplique um preset na aba Presets para preencher automaticamente')}</label>
+        <input type="text" data-field="printerName" value="${escapeHtml(c.printerName)}">
+      </div>
+      <div class="row3">
+        <div class="field">
+          <label>Consumo (W) ${infoDot('Potência média da impressora em Watts')}</label>
+          <input type="number" step="1" min="0" data-field="printerPower" value="${c.printerPower}">
+        </div>
+        <div class="field">
+          <label>Tempo de Impressão (h) ${infoDot('Duração estimada da impressão em horas')}</label>
+          <input type="number" step="0.1" min="0" data-field="printTime" value="${c.printTime}">
+        </div>
+        <div class="field">
+          <label>Depreciação (R$/h) ${infoDot('Custo de desgaste do equipamento por hora')}</label>
+          <input type="number" step="0.01" min="0" data-field="depreciation" value="${c.depreciation}">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>💰 Custos Adicionais</h2><p>Energia, embalagem e envio</p></div>
+      <div class="row2">
+        <div class="field">
+          <label>Custo Energia (R$/kWh) ${infoDot('Tarifa de energia elétrica')}</label>
+          <input type="number" step="0.01" min="0" data-field="energyPrice" value="${c.energyPrice}">
+        </div>
+        <div class="field">
+          <label>Embalagem (R$)</label>
+          <input type="number" step="0.01" min="0" data-field="packagingCost" value="${c.packagingCost}">
+        </div>
+      </div>
+      <div class="field">
+        <label>Tipo de Embalagem</label>
+        <select data-field="packagingType">
+          ${PACKAGING_TYPES.map(p => `<option ${c.packagingType === p ? 'selected' : ''}>${p}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field">
+        <label>Tipo de Frete</label>
+        <div class="pillgroup" data-pillgroup="shippingType">
+          <button type="button" class="pill ${c.shippingType === 'pickup' ? 'active' : ''}" data-val="pickup">🏪 Retirada no Local</button>
+          <button type="button" class="pill ${c.shippingType === 'percentage' ? 'active' : ''}" data-val="percentage">📊 Percentual (%)</button>
+          <button type="button" class="pill ${c.shippingType === 'fixed' ? 'active' : ''}" data-val="fixed">💰 Valor Fixo (R$)</button>
+        </div>
+      </div>
+      <div class="row2">
+        ${c.shippingType === 'percentage' ? `
+        <div class="field">
+          <label>Frete (% do preço)</label>
+          <input type="number" step="0.1" min="0" data-field="shippingPercent" value="${c.shippingPercent}">
+        </div>` : ''}
+        ${c.shippingType === 'fixed' ? `
+        <div class="field">
+          <label>Frete (Valor Fixo R$)</label>
+          <input type="number" step="0.01" min="0" data-field="shippingFixed" value="${c.shippingFixed}">
+        </div>` : ''}
+        <div class="field">
+          <label>Método de Envio</label>
+          <select data-field="shippingMethod">
+            ${SHIPPING_METHODS.map(m => `<option ${c.shippingMethod === m ? 'selected' : ''}>${m}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>💳 Dados Financeiros</h2><p>Margens, taxas e impostos</p></div>
+      <div class="row2">
+        <div class="field">
+          <label>Margem de Segurança (%) ${infoDot('Reserva extra para cobrir falhas de impressão')}</label>
+          <input type="number" step="0.1" min="0" data-field="safetyMargin" value="${c.safetyMargin}">
+        </div>
+        <div class="field">
+          <label>Markup / Lucro (%) ${infoDot('Percentual de lucro aplicado sobre o custo')}</label>
+          <input type="number" step="0.1" min="0" data-field="markup" value="${c.markup}">
+        </div>
+      </div>
+      <div class="row3">
+        <div class="field">
+          <label>Impostos (%)</label>
+          <input type="number" step="0.1" min="0" data-field="taxes" value="${c.taxes}">
+        </div>
+        <div class="field">
+          <label>Taxa Cartão (%)</label>
+          <input type="number" step="0.1" min="0" data-field="cardFee" value="${c.cardFee}">
+        </div>
+        <div class="field">
+          <label>Publicidade (R$)</label>
+          <input type="number" step="0.01" min="0" data-field="advertising" value="${c.advertising}">
+        </div>
+      </div>
+    </div>
+  `;
+  wireCalcForm();
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}
+
+function wireCalcForm() {
+  const col = $('#calcFormCol');
+  col.addEventListener('input', (e) => {
+    const f = e.target.dataset.field;
+    if (!f) return;
+    const isNumber = e.target.type === 'number';
+    state.calc[f] = isNumber ? clampNum(e.target.value) : e.target.value;
+    persistCalc();
+    renderCalcResults();
+    if (state.activeTab === 'analytics') renderAnalytics();
+  });
+  col.addEventListener('change', (e) => {
+    const f = e.target.dataset.field;
+    if (f && e.target.tagName === 'SELECT') {
+      state.calc[f] = e.target.type === 'number' ? clampNum(e.target.value) : e.target.value;
+      persistCalc();
+      renderCalcResults();
+    }
+  });
+  $$('.pillgroup', col).forEach(group => {
+    group.addEventListener('click', (e) => {
+      const btn = e.target.closest('.pill');
+      if (!btn) return;
+      const field = group.dataset.pillgroup;
+      const val = btn.dataset.val;
+      if (field === 'finish') state.calc.finish = val;
+      else if (field === 'nozzle') state.calc.nozzle = parseFloat(val);
+      else if (field === 'shippingType') state.calc.shippingType = val;
+      persistCalc();
+      renderCalcForm();
+      renderCalcResults();
+    });
+  });
+  const photoInput = $('#photoInput', col);
+  if (photoInput) {
+    photoInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        state.calc.photo = reader.result;
+        persistCalc();
+        renderCalcForm();
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+}
+
+function renderCalcResults() {
+  const c = state.calc;
+  const r = computeCalc(c);
+  const col = $('#calcResultCol');
+  col.innerHTML = `
+    <div class="card">
+      <div class="card-head"><h2>📋 Resumo dos Custos (Para Orçamento)</h2><p>Valores base sem impostos (impostos aplicados apenas no PDF)</p></div>
+      <div class="result-row"><span>Material:</span><span class="val">${fmtBRL(r.materialCost)}</span></div>
+      <div class="result-row"><span>Serviço de Impressão:</span><span class="val">${fmtBRL(r.serviceCost)}</span></div>
+      ${r.packagingCost > 0 ? `<div class="result-row"><span>Embalagem:</span><span class="val">${fmtBRL(r.packagingCost)}</span></div>` : ''}
+      <div class="result-row total"><span>Custo Total Bruto:</span><span class="val">${fmtBRL(r.grossTotalCost)}</span></div>
+      <div class="result-row"><span>Com Taxa de Falha:</span><span class="val">${fmtBRL(r.costWithFailure)}</span></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>🎯 Resultado Final (Base — Sem Impostos)</h2><p>Valores base para referência (impostos aplicados no PDF)</p></div>
+      <div class="panel-highlight">
+        <div class="result-row"><span>Preço de Venda:</span><span class="val">${fmtBRL(r.salePrice)}</span></div>
+        <div class="result-row"><span>Custo do Frete:</span><span class="val">${fmtBRL(r.shippingCost)}</span></div>
+        <div class="result-row total"><span>Preço Final (Base):</span><span class="val">${fmtBRL(r.finalPrice)}</span></div>
+        <div class="result-row"><span>Lucro Bruto:</span><span class="val">${fmtBRL(r.grossProfit)}</span></div>
+        <div class="hint">Markup Aplicado: ${fmtPct(c.markup)}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>🏦 Controle Financeiro Interno</h2><p>Impostos cobrados sobre o preço de venda e subtraídos do lucro</p></div>
+      <div class="panel-internal">
+        <div class="result-row"><span>Impostos sobre Venda (${fmtPct(c.taxes)}):</span><span class="val">${fmtBRL(r.taxesAmount)}</span></div>
+        <div class="result-row"><span>Taxa de Cartão (${fmtPct(c.cardFee)}):</span><span class="val">${fmtBRL(r.cardFeeAmount)}</span></div>
+        <div class="result-row"><span>Publicidade (${fmtBRL(c.advertising)}):</span><span class="val">${fmtBRL(r.advertisingAmount)}</span></div>
+        <div class="result-row total"><span>Total de Custos Internos:</span><span class="val">${fmtBRL(r.internalCostsTotal)}</span></div>
+        <div class="result-row"><span>Lucro Líquido Final:</span><span class="val" style="color:var(--green)">${fmtBRL(r.netProfit)}</span></div>
+        <div class="hint">Margem Líquida: ${fmtPct(r.netMarginPct)}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>📈 Métricas Avançadas</h2></div>
+      <div class="metric-grid">
+        <div class="metric-box"><div class="lbl">Custo por grama</div><div class="num">${fmtBRL(r.costPerGram)}</div></div>
+        <div class="metric-box"><div class="lbl">Custo por hora/Base</div><div class="num">${fmtBRL(r.costPerHourBase)}</div></div>
+        <div class="metric-box"><div class="lbl">Custo por hora/Venda</div><div class="num">${fmtBRL(r.costPerHourSale)}</div></div>
+        <div class="metric-box"><div class="lbl">Lucro por hora</div><div class="num">${fmtBRL(r.profitPerHour)}</div></div>
+        <div class="metric-box"><div class="lbl">ROI por peça</div><div class="num">${fmtPct(r.roiPercent)}</div></div>
+        <div class="metric-box"><div class="lbl">Reserva para falha</div><div class="num">${fmtBRL(r.failureReserve)}</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>📄 Gerar Orçamento</h2><p>Gere um orçamento profissional em PDF para seu cliente</p></div>
+      <label class="checkline"><input type="checkbox" id="pdfShowPrinter" ${c.pdfOptions.showPrinter ? 'checked' : ''}> Mostrar dados da impressora</label>
+      <label class="checkline"><input type="checkbox" id="pdfShowSpecs" ${c.pdfOptions.showSpecs ? 'checked' : ''}> Mostrar especificações técnicas</label>
+      <label class="checkline"><input type="checkbox" id="pdfShowBreakdown" ${c.pdfOptions.showBreakdown ? 'checked' : ''}> Mostrar detalhamento de custos</label>
+      <label class="checkline"><input type="checkbox" id="pdfShowCompany" ${c.pdfOptions.showCompany ? 'checked' : ''}> Mostrar dados da empresa</label>
+      <label class="checkline"><input type="checkbox" id="pdfShowSignature" ${c.pdfOptions.showSignature ? 'checked' : ''}> Incluir assinatura do cliente</label>
+      <div class="field" style="margin-top:12px;">
+        <label>🔢 Número do Orçamento</label>
+        <div class="pillgroup" data-pillgroup="budgetMode">
+          <button type="button" class="pill ${c.budgetMode === 'auto' ? 'active' : ''}" data-val="auto">Automático (Nº ${String(state.budgetSeq).padStart(4, '0')})</button>
+          <button type="button" class="pill ${c.budgetMode === 'manual' ? 'active' : ''}" data-val="manual">Manual</button>
+        </div>
+        ${c.budgetMode === 'manual' ? `<input type="text" id="budgetManualInput" style="margin-top:8px;" value="${escapeHtml(c.budgetNumber)}" placeholder="Ex: 0007">` : ''}
+      </div>
+      <button class="btn btn-primary btn-block" id="genPdfBtn" style="margin-top:14px;">📄 Gerar Orçamento PDF Profissional (Nº ${c.budgetMode === 'manual' && c.budgetNumber ? c.budgetNumber : String(state.budgetSeq).padStart(4, '0')})</button>
+      <div class="row2" style="margin-top:10px;">
+        <button class="btn btn-outline" id="saveCalcBtn">💾 Salvar Cálculo</button>
+        <button class="btn btn-outline" id="newCalcBtn">🆕 Novo Orçamento</button>
+      </div>
+    </div>
+  `;
+  wireCalcResults();
+}
+
+function wireCalcResults() {
+  const col = $('#calcResultCol');
+  ['pdfShowPrinter', 'pdfShowSpecs', 'pdfShowBreakdown', 'pdfShowCompany', 'pdfShowSignature'].forEach(id => {
+    const box = $('#' + id, col);
+    if (box) box.addEventListener('change', () => {
+      const map = { pdfShowPrinter: 'showPrinter', pdfShowSpecs: 'showSpecs', pdfShowBreakdown: 'showBreakdown', pdfShowCompany: 'showCompany', pdfShowSignature: 'showSignature' };
+      state.calc.pdfOptions[map[id]] = box.checked;
+      persistCalc();
+    });
+  });
+  const bmGroup = $('[data-pillgroup="budgetMode"]', col);
+  if (bmGroup) bmGroup.addEventListener('click', (e) => {
+    const btn = e.target.closest('.pill');
+    if (!btn) return;
+    state.calc.budgetMode = btn.dataset.val;
+    persistCalc();
+    renderCalcResults();
+  });
+  const bmInput = $('#budgetManualInput', col);
+  if (bmInput) bmInput.addEventListener('input', (e) => { state.calc.budgetNumber = e.target.value; persistCalc(); });
+
+  $('#genPdfBtn', col).addEventListener('click', generateBudgetPDF);
+  $('#saveCalcBtn', col).addEventListener('click', saveCurrentCalcToHistory);
+  $('#newCalcBtn', col).addEventListener('click', () => {
+    if (!confirm('Iniciar um novo orçamento? Os campos serão limpos (o histórico não é afetado).')) return;
+    state.calc = defaultCalc();
+    persistCalc();
+    renderCalcForm();
+    renderCalcResults();
+    toast('Novo orçamento iniciado');
+  });
+}
+
+function applyFilamentPreset(f) {
+  state.calc.filamentName = f.name;
+  state.calc.filamentPrice = f.price;
+  persistCalc();
+  renderCalcForm();
+  renderCalcResults();
+  switchTab('calc');
+  toast(`Filamento "${f.name}" aplicado à calculadora`);
+}
+function applyPrinterPreset(p) {
+  state.calc.printerName = p.name;
+  state.calc.printerPower = p.power;
+  state.calc.depreciation = p.depreciation;
+  persistCalc();
+  renderCalcForm();
+  renderCalcResults();
+  switchTab('calc');
+  toast(`Impressora "${p.name}" aplicada à calculadora`);
+}
+
+/* ---------- Aba Presets ---------- */
+let presetSearch = '';
+let presetCategoryFilter = 'Todas';
+
+function renderPresets() {
+  const wrap = $('#presetContent');
+  const isFilament = state.activePresetSub === 'filament';
+  const cats = isFilament ? FILAMENT_CATEGORIES : PRINTER_CATEGORIES;
+  const items = isFilament ? getAllFilaments() : getAllPrinters();
+  const filtered = items.filter(it => {
+    const matchesSearch = it.name.toLowerCase().includes(presetSearch.toLowerCase());
+    const matchesCat = presetCategoryFilter === 'Todas' || it.category === presetCategoryFilter;
+    return matchesSearch && matchesCat;
+  });
+
+  wrap.innerHTML = `
+    <div class="preset-search">
+      <input type="text" id="presetSearchInput" placeholder="🔎 Buscar ${isFilament ? 'filamento' : 'impressora'}..." value="${escapeHtml(presetSearch)}">
+      <select id="presetCatFilter">
+        <option ${presetCategoryFilter === 'Todas' ? 'selected' : ''}>Todas</option>
+        ${cats.map(c => `<option ${presetCategoryFilter === c ? 'selected' : ''}>${c}</option>`).join('')}
+      </select>
+      <button class="btn btn-outline btn-sm" id="addCustomPresetBtn">+ Adicionar ${isFilament ? 'Filamento' : 'Impressora'} Personalizado</button>
+    </div>
+    <div class="preset-grid">
+      ${filtered.map(it => isFilament ? filamentCardHtml(it) : printerCardHtml(it)).join('') || '<div class="empty-state"><div class="ic">🔍</div>Nenhum resultado encontrado</div>'}
+    </div>
+  `;
+
+  $('#presetSearchInput').addEventListener('input', (e) => { presetSearch = e.target.value; renderPresets(); });
+  $('#presetCatFilter').addEventListener('change', (e) => { presetCategoryFilter = e.target.value; renderPresets(); });
+  $('#addCustomPresetBtn').addEventListener('click', () => isFilament ? openCustomFilamentPrompt() : openCustomPrinterPrompt());
+
+  $$('.preset-apply-btn', wrap).forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      if (isFilament) applyFilamentPreset(items.find(i => i.id === id));
+      else applyPrinterPreset(items.find(i => i.id === id));
+    });
+  });
+}
+
+function filamentCardHtml(f) {
+  return `
+    <div class="preset-card">
+      <div class="top"><h4>${escapeHtml(f.name)}</h4><span class="badge">${f.category}</span></div>
+      <div class="preset-specs">
+        <span>Preço: <b>R$ ${f.price}/kg</b></span>
+        ${f.extrusion ? `<span>Extrusão: <b>${f.extrusion}°C</b></span>` : ''}
+        ${f.bed ? `<span>Mesa: <b>${f.bed}°C</b></span>` : ''}
+      </div>
+      <div class="preset-desc">${escapeHtml(f.desc || '')}</div>
+      <button class="btn btn-primary btn-sm preset-apply-btn" data-id="${f.id}">Aplicar</button>
+    </div>`;
+}
+function printerCardHtml(p) {
+  return `
+    <div class="preset-card">
+      <div class="top"><h4>${escapeHtml(p.name)}</h4><span class="badge">${p.category}</span></div>
+      <div class="preset-specs">
+        <span>Consumo: <b>${p.power} W</b></span>
+        <span>Depreciação: <b>R$ ${p.depreciation}/h</b></span>
+      </div>
+      <div class="preset-desc">${escapeHtml(p.desc || '')}</div>
+      <button class="btn btn-primary btn-sm preset-apply-btn" data-id="${p.id}">Aplicar</button>
+    </div>`;
+}
+
+function openCustomFilamentPrompt() {
+  const name = prompt('Nome do filamento personalizado:');
+  if (!name) return;
+  const price = clampNum(prompt('Preço (R$/kg):', '100'), 100);
+  const extrusion = clampNum(prompt('Temperatura de extrusão (°C, opcional):', '200'), 200);
+  const bed = clampNum(prompt('Temperatura da mesa (°C, opcional):', '60'), 60);
+  const data = loadJSON(STORAGE.customPresets, { filaments: [], printers: [] });
+  data.filaments.push({ id: uid(), name, category: 'Especial', price, extrusion, bed, desc: 'Preset personalizado' });
+  saveJSON(STORAGE.customPresets, data);
+  renderPresets();
+  toast('Filamento personalizado adicionado');
+}
+function openCustomPrinterPrompt() {
+  const name = prompt('Nome da impressora personalizada:');
+  if (!name) return;
+  const power = clampNum(prompt('Consumo (W):', '250'), 250);
+  const depreciation = clampNum(prompt('Depreciação (R$/h):', '0.5'), 0.5);
+  const data = loadJSON(STORAGE.customPresets, { filaments: [], printers: [] });
+  data.printers.push({ id: uid(), name, category: 'FDM Intermediária', power, depreciation, desc: 'Preset personalizado' });
+  saveJSON(STORAGE.customPresets, data);
+  renderPresets();
+  toast('Impressora personalizada adicionada');
+}
+
+/* ---------- Aba Análises ---------- */
+const DONUT_COLORS = ['#2563eb', '#16a34a', '#d97706', '#7c3aed'];
+function renderAnalytics() {
+  const c = state.calc;
+  const r = computeCalc(c);
+  const wrap = $('#analyticsContent');
+  const parts = [
+    { label: 'Material', value: r.materialCost },
+    { label: 'Energia', value: r.energyCost },
+    { label: 'Tempo Impressora (Depreciação)', value: r.depreciationCost },
+    { label: 'Embalagem', value: r.packagingCost },
+  ].filter(p => p.value > 0);
+
+  if (!parts.length || r.grossTotalCost <= 0) {
+    wrap.innerHTML = '<div class="empty-state"><div class="ic">📊</div>Preencha a calculadora para ver a distribuição de custos</div>';
+    return;
+  }
+
+  const total = parts.reduce((s, p) => s + p.value, 0);
+  let cursor = 0;
+  const stops = parts.map((p, i) => {
+    const pct = (p.value / total) * 100;
+    const from = cursor;
+    const to = cursor + pct;
+    cursor = to;
+    return `${DONUT_COLORS[i % DONUT_COLORS.length]} ${from}% ${to}%`;
+  }).join(', ');
+
+  wrap.innerHTML = `
+    <div class="donut-wrap">
+      <div class="donut" style="background:conic-gradient(${stops});">
+        <div class="donut-center">
+          <div class="t1">Custo Total</div>
+          <div class="t2">${fmtBRL(total)}</div>
+        </div>
+      </div>
+      <div class="legend">
+        ${parts.map((p, i) => `
+          <div class="legend-item">
+            <span class="legend-dot" style="background:${DONUT_COLORS[i % DONUT_COLORS.length]}"></span>
+            <span class="lname">${p.label}</span>
+            <b>${fmtBRL(p.value)} · ${((p.value / total) * 100).toFixed(0)}%</b>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="card" style="margin-top:6px;background:var(--surface-2);box-shadow:none;">
+      <div class="card-head"><h2 style="font-size:14px;">📌 Interpretação</h2></div>
+      <p style="font-size:12.5px;color:var(--text-muted);margin:0;line-height:1.6;">
+        ${biggestShareText(parts, total)}
+      </p>
+    </div>
+  `;
+}
+function biggestShareText(parts, total) {
+  const biggest = parts.reduce((a, b) => (b.value > a.value ? b : a));
+  const pct = ((biggest.value / total) * 100).toFixed(0);
+  return `O maior componente do custo é <b>${biggest.label}</b>, representando <b>${pct}%</b> do custo total bruto desta peça. Reduzir esse item (ex: negociar preço do material, otimizar tempo de impressão ou revisar depreciação do equipamento) é o que mais impacta o custo final.`;
+}
+
+/* ---------- Aba Comparação ---------- */
+function currentScenarioFromCalc() {
+  const c = state.calc;
+  return { id: 'current', name: 'Cenário Atual', filamentPrice: c.filamentPrice, weight: c.pieceWeight, time: c.printTime, markup: c.markup, isCurrent: true };
+}
+function computeScenario(sc) {
+  const c = state.calc;
+  const materialCost = (clampNum(sc.weight) / 1000) * clampNum(sc.filamentPrice);
+  const energyCost = (clampNum(c.printerPower) / 1000) * clampNum(sc.time) * clampNum(c.energyPrice);
+  const depreciationCost = clampNum(c.depreciation) * clampNum(sc.time);
+  const grossTotalCost = materialCost + energyCost + depreciationCost + clampNum(c.packagingCost);
+  const costWithFailure = grossTotalCost * (1 + clampNum(c.safetyMargin) / 100);
+  const salePrice = costWithFailure * (1 + clampNum(sc.markup) / 100);
+  let shippingCost = 0;
+  if (c.shippingType === 'percentage') shippingCost = salePrice * (clampNum(c.shippingPercent) / 100);
+  else if (c.shippingType === 'fixed') shippingCost = clampNum(c.shippingFixed);
+  const finalPrice = salePrice + shippingCost;
+  return { materialCost, grossTotalCost, salePrice, finalPrice };
+}
+function renderCompare() {
+  const wrap = $('#compareContent');
+  const scenarios = [currentScenarioFromCalc(), ...state.scenarios];
+  wrap.innerHTML = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+      <button class="btn btn-primary btn-sm" id="addScenarioBtn">+ Adicionar Cenário</button>
+    </div>
+    <div class="scrollx">
+      <table class="compare-table">
+        <thead><tr>
+          <th>Cenário</th><th>Filamento (R$/kg)</th><th>Peso (g)</th><th>Tempo (h)</th><th>Margem (%)</th>
+          <th>Custo Material</th><th>Custo Total</th><th>Preço Final</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${scenarios.map(sc => compareRowHtml(sc)).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+  $('#addScenarioBtn').addEventListener('click', () => {
+    const base = currentScenarioFromCalc();
+    state.scenarios.push({ id: uid(), name: `Cenário ${state.scenarios.length + 2}`, filamentPrice: base.filamentPrice, weight: base.weight, time: base.time, markup: base.markup });
+    persistScenarios();
+    renderCompare();
+  });
+  $$('.compare-table input[data-sc]', wrap).forEach(inp => {
+    inp.addEventListener('input', (e) => {
+      const scId = e.target.dataset.sc;
+      const field = e.target.dataset.field;
+      const sc = state.scenarios.find(s => s.id === scId);
+      if (!sc) return;
+      sc[field] = clampNum(e.target.value);
+      persistScenarios();
+      renderCompareValuesOnly();
+    });
+  });
+  $$('.compare-remove-btn', wrap).forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.scenarios = state.scenarios.filter(s => s.id !== btn.dataset.sc);
+      persistScenarios();
+      renderCompare();
+    });
+  });
+}
+function renderCompareValuesOnly() {
+  const scenarios = [currentScenarioFromCalc(), ...state.scenarios];
+  scenarios.forEach(sc => {
+    const r = computeScenario(sc);
+    const row = document.querySelector(`tr[data-row="${sc.id}"]`);
+    if (!row) return;
+    $('.mat', row).textContent = fmtBRL(r.materialCost);
+    $('.tot', row).textContent = fmtBRL(r.grossTotalCost);
+    $('.fin', row).textContent = fmtBRL(r.finalPrice);
+  });
+}
+function compareRowHtml(sc) {
+  const r = computeScenario(sc);
+  return `
+    <tr data-row="${sc.id}">
+      <td class="name-cell">${escapeHtml(sc.name)}${sc.isCurrent ? ' <span class="badge">atual</span>' : ''}</td>
+      <td>${sc.isCurrent
+        ? fmtBRL(sc.filamentPrice)
+        : `<input type="number" step="0.01" data-sc="${sc.id}" data-field="filamentPrice" value="${sc.filamentPrice}">`}</td>
+      <td>${sc.isCurrent
+        ? sc.weight + ' g'
+        : `<input type="number" step="0.1" data-sc="${sc.id}" data-field="weight" value="${sc.weight}">`}</td>
+      <td>${sc.isCurrent
+        ? sc.time + ' h'
+        : `<input type="number" step="0.1" data-sc="${sc.id}" data-field="time" value="${sc.time}">`}</td>
+      <td>${sc.isCurrent
+        ? fmtPct(sc.markup)
+        : `<input type="number" step="0.1" data-sc="${sc.id}" data-field="markup" value="${sc.markup}">`}</td>
+      <td class="mat">${fmtBRL(r.materialCost)}</td>
+      <td class="tot">${fmtBRL(r.grossTotalCost)}</td>
+      <td class="fin"><b>${fmtBRL(r.finalPrice)}</b></td>
+      <td>${sc.isCurrent ? '' : `<button class="btn btn-danger btn-sm compare-remove-btn" data-sc="${sc.id}">✕</button>`}</td>
+    </tr>`;
+}
+
+/* ---------- Aba Histórico ---------- */
+function saveCurrentCalcToHistory() {
+  const c = state.calc;
+  if (!c.projectName) { toast('Dê um nome ao projeto antes de salvar'); return; }
+  const r = computeCalc(c);
+  const entry = {
+    id: uid(),
+    savedAt: new Date().toISOString(),
+    name: c.projectName,
+    calc: JSON.parse(JSON.stringify(c)),
+    result: { finalPrice: r.finalPrice, grossTotalCost: r.grossTotalCost, netProfit: r.netProfit },
+  };
+  state.history.unshift(entry);
+  if (state.history.length > 50) state.history.length = 50;
+  persistHistory();
+  toast('Cálculo salvo no histórico');
+  if (state.activeTab === 'history') renderHistory();
+}
+function renderHistory() {
+  const wrap = $('#historyContent');
+  if (!state.history.length) {
+    wrap.innerHTML = '<div class="empty-state"><div class="ic">📚</div>Nenhum cálculo salvo ainda</div>';
+    return;
+  }
+  wrap.innerHTML = state.history.map(hEntry => {
+    const d = new Date(hEntry.savedAt);
+    const dateStr = d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return `
+    <div class="hist-card">
+      <div class="hist-info">
+        <h4>${escapeHtml(hEntry.name)}</h4>
+        <p>${dateStr} · Preço final: <b>${fmtBRL(hEntry.result.finalPrice)}</b> · Lucro líquido: ${fmtBRL(hEntry.result.netProfit)}</p>
+      </div>
+      <div class="hist-actions">
+        <button class="btn btn-outline btn-sm hist-load" data-id="${hEntry.id}">📂 Carregar</button>
+        <button class="btn btn-danger btn-sm hist-del" data-id="${hEntry.id}">🗑️ Excluir</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  $$('.hist-load', wrap).forEach(btn => btn.addEventListener('click', () => {
+    const entry = state.history.find(x => x.id === btn.dataset.id);
+    if (!entry) return;
+    state.calc = JSON.parse(JSON.stringify(entry.calc));
+    persistCalc();
+    switchTab('calc');
+    toast(`"${entry.name}" carregado na calculadora`);
+  }));
+  $$('.hist-del', wrap).forEach(btn => btn.addEventListener('click', () => {
+    if (!confirm('Excluir este item do histórico?')) return;
+    state.history = state.history.filter(x => x.id !== btn.dataset.id);
+    persistHistory();
+    renderHistory();
+  }));
+}
+function exportHistory() {
+  const blob = new Blob([JSON.stringify(state.history, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `db-criacoes-3d-historico-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  toast('Histórico exportado');
+}
+function importHistoryFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const imported = JSON.parse(reader.result);
+      if (!Array.isArray(imported)) throw new Error('formato inválido');
+      const existingIds = new Set(state.history.map(h => h.id));
+      const merged = [...imported.filter(i => !existingIds.has(i.id)), ...state.history];
+      merged.sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt));
+      state.history = merged.slice(0, 50);
+      persistHistory();
+      renderHistory();
+      toast(`${imported.length} itens importados`);
+    } catch (e) {
+      alert('Arquivo inválido. Selecione um JSON exportado por este app.');
+    }
+  };
+  reader.readAsText(file);
+}
+
+/* ---------- Aba Configurações ---------- */
+function renderSettings() {
+  const co = state.company;
+  const wrap = $('#settingsContent');
+  wrap.innerHTML = `
+    <div class="grid-2">
+      <div>
+        <div class="card">
+          <div class="card-head"><h2>🏢 Dados da Empresa</h2><p>Usados para preencher automaticamente o orçamento em PDF</p></div>
+          <div class="field">
+            <label>Nome / Marca</label>
+            <input type="text" data-cfield="name" value="${escapeHtml(co.name)}">
+          </div>
+          <div class="field">
+            <label>Logo</label>
+            <div class="logo-upload">
+              <div class="logo-preview">${co.logo ? `<img src="${co.logo}">` : '🖼️'}</div>
+              <label class="file-btn">Escolher imagem<input type="file" id="logoInput" accept="image/*"></label>
+              ${co.logo ? '<button class="btn btn-outline btn-sm" id="removeLogoBtn">Remover</button>' : ''}
+            </div>
+          </div>
+          <div class="row2">
+            <div class="field"><label>Telefone / WhatsApp</label><input type="text" data-cfield="phone" value="${escapeHtml(co.phone)}" placeholder="(00) 00000-0000"></div>
+            <div class="field"><label>E-mail</label><input type="text" data-cfield="email" value="${escapeHtml(co.email)}" placeholder="contato@empresa.com"></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label>CNPJ / CPF (opcional)</label><input type="text" data-cfield="cnpj" value="${escapeHtml(co.cnpj)}"></div>
+            <div class="field"><label>Endereço (opcional)</label><input type="text" data-cfield="address" value="${escapeHtml(co.address)}"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h2>🎚️ Valores Padrão</h2><p>Usados ao iniciar um novo orçamento</p></div>
+          <div class="row2">
+            <div class="field"><label>Margem de Segurança Padrão (%)</label><input type="number" step="0.1" data-cfield="defaultMargin" value="${co.defaultMargin}"></div>
+            <div class="field"><label>Markup Padrão (%)</label><input type="number" step="0.1" data-cfield="defaultMarkup" value="${co.defaultMarkup}"></div>
+          </div>
+          <div class="row3">
+            <div class="field"><label>Impostos Padrão (%)</label><input type="number" step="0.1" data-cfield="defaultTaxes" value="${co.defaultTaxes}"></div>
+            <div class="field"><label>Taxa Cartão Padrão (%)</label><input type="number" step="0.1" data-cfield="defaultCardFee" value="${co.defaultCardFee}"></div>
+            <div class="field"><label>Energia Padrão (R$/kWh)</label><input type="number" step="0.01" data-cfield="defaultEnergyPrice" value="${co.defaultEnergyPrice}"></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <div class="card-head"><h2>🎨 Aparência</h2></div>
+          <div class="theme-toggle">
+            <span>Modo escuro</span>
+            <label class="switch">
+              <input type="checkbox" id="darkModeSwitch" ${document.documentElement.getAttribute('data-theme') === 'dark' ? 'checked' : ''}>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h2>💾 Dados</h2><p>Tudo é salvo localmente neste navegador</p></div>
+          <p style="font-size:12.5px;color:var(--text-muted);margin:0 0 12px;">Histórico salvo: <b>${state.history.length}</b> cálculo(s) · Cenários de comparação: <b>${state.scenarios.length}</b></p>
+          <button class="btn btn-danger btn-block" id="restoreDefaultsBtn">🔄 Restaurar Configurações Padrão</button>
+        </div>
+
+        <div class="card" style="background:var(--surface-2);box-shadow:none;">
+          <div class="card-head"><h2 style="font-size:14px;">ℹ️ Privacidade</h2></div>
+          <p style="font-size:12px;color:var(--text-muted);margin:0;line-height:1.6;">Nenhum dado é enviado para servidores externos. Tudo fica salvo no armazenamento local (localStorage) deste navegador. Use a aba Histórico para fazer backup em JSON.</p>
+        </div>
+      </div>
+    </div>
+  `;
+  wireSettings();
+}
+function wireSettings() {
+  const wrap = $('#settingsContent');
+  $$('[data-cfield]', wrap).forEach(inp => {
+    inp.addEventListener('input', () => {
+      const f = inp.dataset.cfield;
+      state.company[f] = inp.type === 'number' ? clampNum(inp.value) : inp.value;
+      persistCompany();
+    });
+  });
+  const logoInput = $('#logoInput', wrap);
+  if (logoInput) logoInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      state.company.logo = reader.result;
+      persistCompany();
+      renderSettings();
+    };
+    reader.readAsDataURL(file);
+  });
+  const removeLogoBtn = $('#removeLogoBtn', wrap);
+  if (removeLogoBtn) removeLogoBtn.addEventListener('click', () => {
+    state.company.logo = '';
+    persistCompany();
+    renderSettings();
+  });
+  $('#darkModeSwitch', wrap).addEventListener('change', (e) => setTheme(e.target.checked ? 'dark' : 'light'));
+  $('#restoreDefaultsBtn', wrap).addEventListener('click', () => {
+    if (!confirm('Isso vai restaurar as configurações e a calculadora para os valores padrão. O histórico salvo NÃO será apagado. Continuar?')) return;
+    state.company = defaultCompany();
+    persistCompany();
+    state.calc = defaultCalc();
+    persistCalc();
+    renderSettings();
+    renderCalcForm();
+    renderCalcResults();
+    toast('Configurações restauradas');
+  });
+}
+
+/* ---------- Geração de PDF ---------- */
+function generateBudgetPDF() {
+  if (!window.jspdf) { alert('Não foi possível carregar o gerador de PDF (verifique sua conexão com a internet) e tente novamente.'); return; }
+  const { jsPDF } = window.jspdf;
+  const c = state.calc;
+  const co = state.company;
+  const r = computeCalc(c);
+  const opt = c.pdfOptions;
+  const budgetNum = c.budgetMode === 'manual' && c.budgetNumber ? c.budgetNumber : String(state.budgetSeq).padStart(4, '0');
+
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const marginX = 44;
+  let y = 50;
+
+  const primaryRGB = [29, 78, 216];
+  const textRGB = [15, 23, 42];
+  const mutedRGB = [100, 116, 139];
+
+  // Header band
+  doc.setFillColor(...primaryRGB);
+  doc.rect(0, 0, pageW, 86, 'F');
+  if (opt.showCompany && co.logo) {
+    try { doc.addImage(co.logo, 'JPEG', marginX, 18, 50, 50); } catch (e) { try { doc.addImage(co.logo, 'PNG', marginX, 18, 50, 50); } catch (e2) {} }
+  }
+  const textX = (opt.showCompany && co.logo) ? marginX + 62 : marginX;
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(17);
+  doc.text(opt.showCompany ? (co.name || 'DB Criações 3D') : 'Orçamento de Impressão 3D', textX, 40);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10.5);
+  doc.text('Orçamento Profissional de Impressão 3D', textX, 58);
+  doc.setFontSize(10);
+  doc.text(`Nº ${budgetNum}  ·  ${new Date().toLocaleDateString('pt-BR')}`, pageW - marginX, 40, { align: 'right' });
+
+  y = 112;
+  doc.setTextColor(...textRGB);
+
+  function sectionTitle(t) {
+    y += 14;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(...primaryRGB);
+    doc.text(t, marginX, y);
+    doc.setDrawColor(...primaryRGB);
+    doc.setLineWidth(1);
+    doc.line(marginX, y + 5, pageW - marginX, y + 5);
+    y += 24;
+    doc.setTextColor(...textRGB);
+  }
+  function kv(label, value, colX, width) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(...mutedRGB);
+    doc.text(label, colX, y);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10.5);
+    doc.setTextColor(...textRGB);
+    doc.text(String(value || '—'), colX, y + 14);
+  }
+
+  if (opt.showCompany) {
+    sectionTitle('Dados da Empresa');
+    const parts = [co.phone, co.email, co.cnpj, co.address].filter(Boolean).join('   ·   ');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(...mutedRGB);
+    doc.text(parts || 'Sem informações de contato cadastradas', marginX, y);
+    y += 24;
+  }
+
+  sectionTitle('Detalhes do Projeto');
+  const colWidth = (pageW - marginX * 2) / 3;
+  kv('Projeto', c.projectName || 'Sem nome', marginX, colWidth);
+  kv('Dimensões', c.dimensions, marginX + colWidth, colWidth);
+  kv('Cor', c.color, marginX + colWidth * 2, colWidth);
+  y += 34;
+  kv('Acabamento', c.finish, marginX, colWidth);
+  kv('Bico', c.nozzle + ' mm', marginX + colWidth, colWidth);
+  kv('Resolução', c.resolution + ' mm', marginX + colWidth * 2, colWidth);
+  y += 30;
+
+  if (c.photo) {
+    try { doc.addImage(c.photo, 'JPEG', pageW - marginX - 90, 112, 90, 90); } catch (e) { try { doc.addImage(c.photo, 'PNG', pageW - marginX - 90, 112, 90, 90); } catch (e2) {} }
+  }
+
+  if (opt.showSpecs) {
+    sectionTitle('Especificações Técnicas');
+    kv('Filamento', c.filamentName, marginX, colWidth);
+    kv('Peso da Peça', c.pieceWeight + ' g', marginX + colWidth, colWidth);
+    kv('Tempo de Impressão', c.printTime + ' h', marginX + colWidth * 2, colWidth);
+    y += 34;
+    if (opt.showPrinter) {
+      kv('Impressora', c.printerName, marginX, colWidth);
+      kv('Consumo', c.printerPower + ' W', marginX + colWidth, colWidth);
+      kv('Embalagem', c.packagingType, marginX + colWidth * 2, colWidth);
+      y += 34;
+    }
+  }
+
+  if (opt.showBreakdown) {
+    sectionTitle('Detalhamento de Custos');
+    const rows = [
+      ['Material', fmtBRL(r.materialCost)],
+      ['Serviço de Impressão (energia + depreciação)', fmtBRL(r.serviceCost)],
+      ['Embalagem', fmtBRL(r.packagingCost)],
+      ['Custo Total Bruto', fmtBRL(r.grossTotalCost)],
+      ['Reserva para Falha', fmtBRL(r.failureReserve)],
+      ['Frete', fmtBRL(r.shippingCost)],
+    ];
+    doc.setFontSize(10);
+    rows.forEach(([label, val]) => {
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...mutedRGB);
+      doc.text(label, marginX, y);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...textRGB);
+      doc.text(val, pageW - marginX, y, { align: 'right' });
+      y += 16;
+    });
+    y += 8;
+  }
+
+  // Total box
+  doc.setFillColor(240, 249, 244);
+  doc.roundedRect(marginX, y, pageW - marginX * 2, 56, 6, 6, 'F');
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  doc.setTextColor(...mutedRGB);
+  doc.text('Valor Total do Orçamento', marginX + 16, y + 22);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(22, 163, 74);
+  doc.text(fmtBRL(r.finalPrice), pageW - marginX - 16, y + 36, { align: 'right' });
+  y += 74;
+
+  if (opt.showSignature) {
+    y += 30;
+    if (y > 720) { doc.addPage(); y = 60; }
+    doc.setDrawColor(...mutedRGB);
+    doc.line(marginX, y, marginX + 220, y);
+    doc.setFontSize(9.5);
+    doc.setTextColor(...mutedRGB);
+    doc.text('Assinatura do Cliente', marginX, y + 14);
+    doc.line(pageW - marginX - 220, y, pageW - marginX, y);
+    doc.text('Data', pageW - marginX - 220, y + 14);
+  }
+
+  // Footer
+  const pageH = doc.internal.pageSize.getHeight();
+  doc.setFontSize(8.5);
+  doc.setTextColor(...mutedRGB);
+  doc.text(`Orçamento gerado em ${new Date().toLocaleString('pt-BR')} · ${co.name || 'DB Criações 3D'}`, marginX, pageH - 24);
+
+  const fileSafeName = (c.projectName || 'orcamento').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  doc.save(`orcamento-${fileSafeName}-${budgetNum}.pdf`);
+
+  if (c.budgetMode === 'auto') {
+    state.budgetSeq += 1;
+    persistBudgetSeq();
+    renderCalcResults();
+    updateBudgetTag();
+  }
+  toast('PDF do orçamento gerado com sucesso');
+}
+
+/* ---------- Navegação por Abas ---------- */
+function switchTab(tab) {
+  state.activeTab = tab;
+  $$('.tabbtn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  $$('.tabpanel').forEach(p => p.classList.remove('active'));
+  $('#tab-' + tab).classList.add('active');
+  if (tab === 'presets') renderPresets();
+  if (tab === 'analytics') renderAnalytics();
+  if (tab === 'compare') renderCompare();
+  if (tab === 'history') renderHistory();
+  if (tab === 'settings') renderSettings();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ---------- Tema ---------- */
+function setTheme(mode) {
+  document.documentElement.setAttribute('data-theme', mode);
+  saveJSON(STORAGE.theme, mode);
+  $('#themeToggleBtn').textContent = mode === 'dark' ? '☀️' : '🌙';
+}
+function initTheme() {
+  const saved = loadJSON(STORAGE.theme, null);
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  setTheme(saved || (prefersDark ? 'dark' : 'light'));
+}
+
+/* ---------- Inicialização ---------- */
+function wireGlobalEvents() {
+  $('#tabbar').addEventListener('click', (e) => {
+    const btn = e.target.closest('.tabbtn');
+    if (btn) switchTab(btn.dataset.tab);
+  });
+  $('#themeToggleBtn').addEventListener('click', () => {
+    const cur = document.documentElement.getAttribute('data-theme');
+    setTheme(cur === 'dark' ? 'light' : 'dark');
+  });
+  $('#presetSubtabs').addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    state.activePresetSub = btn.dataset.sub;
+    presetSearch = '';
+    presetCategoryFilter = 'Todas';
+    $$('#presetSubtabs button').forEach(b => b.classList.toggle('active', b === btn));
+    renderPresets();
+  });
+  $('#exportHistBtn').addEventListener('click', exportHistory);
+  $('#importHistInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) importHistoryFile(file);
+    e.target.value = '';
+  });
+  $('#clearHistBtn').addEventListener('click', () => {
+    if (!state.history.length) return;
+    if (!confirm('Isso apagará todo o histórico salvo neste navegador (irreversível). Deseja continuar? Você pode exportar um backup antes.')) return;
+    state.history = [];
+    persistHistory();
+    renderHistory();
+    toast('Histórico apagado');
+  });
+}
+
+function updateBudgetTag() {
+  $('#budgetTag').textContent = `Orçamento Nº ${String(state.budgetSeq).padStart(4, '0')}`;
+}
+
+function init() {
+  $('#yearNow').textContent = new Date().getFullYear();
+  initTheme();
+  wireGlobalEvents();
+  updateBudgetTag();
+  renderCalcForm();
+  renderCalcResults();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
